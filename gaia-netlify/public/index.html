@@ -1,0 +1,1781 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>GAIA — 脱炭素ホログラムエージェント</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=JetBrains+Mono:wght@300;400&family=Noto+Serif+JP:wght@300;400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: revert !important;
+      animation-iteration-count: revert !important;
+      transition-duration: revert !important;
+    }
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    color: #d4e3d0;
+    font-family: 'Noto Serif JP', 'Cormorant Garamond', serif;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  .mode-toggle {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 100;
+    display: flex;
+    gap: 8px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(120,180,140,0.2);
+    border-radius: 24px;
+    padding: 4px;
+  }
+  .mode-toggle button {
+    background: transparent;
+    border: none;
+    color: #6a8a70;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    padding: 8px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+  }
+  .mode-toggle button.active {
+    background: rgba(120,180,140,0.15);
+    color: #d4e3d0;
+  }
+
+  #normal-view {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(20,60,40,0.4), transparent 60%),
+      radial-gradient(ellipse at 70% 80%, rgba(40,30,20,0.3), transparent 60%),
+      #000;
+  }
+  .header {
+    padding: 18px 22px 8px;
+    border-bottom: 1px solid rgba(120,180,140,0.08);
+  }
+  .title-en {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 11px;
+    letter-spacing: 0.4em;
+    color: #6a8a70;
+    margin-bottom: 2px;
+  }
+  .title-main {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: 28px;
+    letter-spacing: 0.25em;
+    color: #d4e3d0;
+    line-height: 1;
+  }
+  .title-jp {
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 300;
+    font-size: 10px;
+    letter-spacing: 0.5em;
+    color: #6a8a70;
+    margin-top: 6px;
+  }
+
+  #avatar-container {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  #single-canvas { width: 100%; height: 100%; display: block; }
+
+  .status-orb {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #6a8a70;
+    letter-spacing: 0.15em;
+    z-index: 10;
+  }
+  .orb-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #4a8a5a;
+    box-shadow: 0 0 8px #4a8a5a;
+  }
+  .orb-dot.speaking { background: #d4b878; box-shadow: 0 0 10px #d4b878; }
+  .orb-dot.listening { background: #5aa8c4; box-shadow: 0 0 10px #5aa8c4; animation: blink-fast 1s infinite; }
+  .orb-dot.thinking { background: #b8a878; box-shadow: 0 0 10px #b8a878; }
+  .orb-dot.error { background: #c45a5a; box-shadow: 0 0 8px #c45a5a; }
+  @keyframes blink-fast {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  /* Mic toggle on top — always visible */
+  .mic-toggle {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(120,180,140,0.2);
+    border-radius: 24px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: #6a8a70;
+  }
+  .mic-toggle.on {
+    background: rgba(196,90,90,0.2);
+    border-color: rgba(196,90,90,0.5);
+    color: #e8d4d4;
+  }
+  .mic-toggle .mic-icon {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #6a8a70;
+    transition: all 0.3s;
+  }
+  .mic-toggle.on .mic-icon {
+    background: #e85a5a;
+    box-shadow: 0 0 8px #e85a5a;
+    animation: mic-pulse 1.5s infinite;
+  }
+  @keyframes mic-pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.4); opacity: 0.7; }
+  }
+
+  /* Live transcript display */
+  .live-transcript {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20,40,30,0.85);
+    border: 1px solid rgba(120,180,140,0.3);
+    border-radius: 18px;
+    padding: 8px 16px;
+    font-size: 13px;
+    color: #d4e3d0;
+    max-width: 80%;
+    z-index: 9;
+    display: none;
+    font-family: 'Noto Serif JP', serif;
+  }
+  .live-transcript.visible { display: block; }
+  .live-transcript.interim { color: #8aa890; font-style: italic; }
+
+  .chat-area {
+    height: 36%;
+    min-height: 220px;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.8));
+    border-top: 1px solid rgba(120,180,140,0.15);
+  }
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 20px;
+    font-size: 14px;
+    line-height: 1.7;
+  }
+  .messages::-webkit-scrollbar { width: 2px; }
+  .messages::-webkit-scrollbar-thumb { background: rgba(120,180,140,0.3); }
+
+  .msg { margin-bottom: 14px; }
+  .msg-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    opacity: 0.6;
+  }
+  .msg.user .msg-label { color: #b8a878; }
+  .msg.agent .msg-label { color: #7aab8a; }
+  .msg.user .msg-text { color: #e8dfc4; }
+  .msg.agent .msg-text { color: #d4e3d0; font-family: 'Noto Serif JP', serif; }
+  .msg-text { white-space: pre-wrap; word-wrap: break-word; }
+
+  .typing { display: inline-flex; gap: 4px; }
+  .typing span {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: #7aab8a;
+    animation: blink 1.4s infinite;
+  }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes blink {
+    0%, 60%, 100% { opacity: 0.2; }
+    30% { opacity: 1; }
+  }
+
+  .input-bar {
+    display: flex;
+    gap: 8px;
+    padding: 12px 14px 16px;
+    border-top: 1px solid rgba(120,180,140,0.1);
+    align-items: center;
+  }
+  .input-bar input {
+    flex: 1;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(120,180,140,0.15);
+    border-radius: 24px;
+    padding: 12px 18px;
+    color: #d4e3d0;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 14px;
+    outline: none;
+  }
+  .input-bar input:focus { border-color: rgba(120,180,140,0.5); }
+  .input-bar input::placeholder { color: #4a6a55; font-style: italic; }
+  .icon-btn {
+    background: linear-gradient(135deg, #4a8a5a, #2d5a3a);
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    color: #fff;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+  }
+  .icon-btn:active { transform: scale(0.92); }
+  .icon-btn:disabled { opacity: 0.4; }
+  .voice-toggle {
+    background: rgba(40,40,40,0.6);
+    border: 1px solid rgba(120,180,140,0.2);
+    color: #6a8a70;
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    cursor: pointer;
+  }
+  .voice-toggle.on {
+    background: rgba(120,180,140,0.2);
+    color: #d4e3d0;
+    border-color: rgba(120,180,140,0.5);
+  }
+  .voice-settings-btn {
+    background: rgba(40,40,40,0.6);
+    border: 1px solid rgba(120,180,140,0.2);
+    color: #6a8a70;
+    border-radius: 20px;
+    padding: 6px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  /* Stop / interrupt button — visible only when GAIA is speaking */
+  .stop-btn {
+    position: absolute;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    z-index: 12;
+    background: linear-gradient(135deg, #c45a5a, #8a2d2d);
+    border: 1px solid rgba(232,90,90,0.4);
+    color: #fff;
+    border-radius: 28px;
+    padding: 12px 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 20px rgba(196,90,90,0.4);
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s ease;
+  }
+  .stop-btn.visible {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+  }
+  .stop-btn:active { transform: translateX(-50%) scale(0.95); }
+  .stop-btn .stop-icon {
+    width: 10px;
+    height: 10px;
+    background: #fff;
+    border-radius: 2px;
+  }
+  .barge-meter {
+    position: absolute;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 11;
+    width: 120px;
+    height: 3px;
+    background: rgba(120,180,140,0.15);
+    border-radius: 2px;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .barge-meter.visible { opacity: 1; }
+  .barge-meter-fill {
+    height: 100%;
+    background: linear-gradient(to right, #5aa8c4, #d4b878, #c45a5a);
+    width: 0%;
+    transition: width 0.05s ease-out;
+  }
+
+  /* Debug log overlay */
+  .debug-log {
+    position: fixed;
+    top: 60px;
+    left: 8px;
+    right: 8px;
+    max-height: 30vh;
+    overflow-y: auto;
+    background: rgba(0,0,0,0.85);
+    border: 1px solid rgba(120,180,140,0.3);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #b8d4be;
+    z-index: 150;
+    line-height: 1.5;
+    display: none;
+  }
+  .debug-log.visible { display: block; }
+  .debug-toggle {
+    position: fixed;
+    bottom: 8px;
+    left: 8px;
+    z-index: 160;
+    background: rgba(0,0,0,0.6);
+    border: 1px solid rgba(120,180,140,0.2);
+    color: #6a8a70;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    cursor: pointer;
+    opacity: 0.5;
+  }
+
+  /* Voice selection modal */
+  .voice-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    backdrop-filter: blur(8px);
+    z-index: 250;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .voice-modal.hidden { display: none; }
+  .voice-modal-inner {
+    width: 100%;
+    max-width: 480px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    background: rgba(20,30,25,0.95);
+    border: 1px solid rgba(120,180,140,0.25);
+    border-radius: 16px;
+    padding: 24px;
+    overflow: hidden;
+  }
+  .voice-modal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 28px;
+    letter-spacing: 0.15em;
+    color: #d4e3d0;
+    margin-bottom: 4px;
+  }
+  .voice-modal-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: #7aab8a;
+    margin-bottom: 18px;
+    text-transform: uppercase;
+  }
+  .voice-modal-desc {
+    font-size: 12px;
+    color: #8a9a8a;
+    line-height: 1.6;
+    margin-bottom: 16px;
+  }
+  .voice-list {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 16px;
+    padding-right: 4px;
+  }
+  .voice-list::-webkit-scrollbar { width: 4px; }
+  .voice-list::-webkit-scrollbar-thumb { background: rgba(120,180,140,0.3); border-radius: 2px; }
+  .voice-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    margin-bottom: 6px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(120,180,140,0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .voice-item:hover {
+    border-color: rgba(120,180,140,0.4);
+    background: rgba(0,0,0,0.5);
+  }
+  .voice-item.selected {
+    border-color: rgba(120,180,140,0.7);
+    background: rgba(120,180,140,0.1);
+  }
+  .voice-item-info { flex: 1; min-width: 0; }
+  .voice-item-name {
+    font-family: 'Noto Serif JP', serif;
+    font-size: 13px;
+    color: #d4e3d0;
+    margin-bottom: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .voice-item-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: #6a8a70;
+    letter-spacing: 0.1em;
+  }
+  .voice-item-meta .badge {
+    display: inline-block;
+    background: rgba(120,180,140,0.15);
+    color: #b8d4be;
+    padding: 1px 6px;
+    border-radius: 4px;
+    margin-left: 6px;
+    font-size: 8px;
+  }
+  .voice-item-meta .badge.local {
+    background: rgba(212,184,120,0.15);
+    color: #e8d4a8;
+  }
+  .voice-item-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .voice-test-btn {
+    background: rgba(74,138,90,0.4);
+    border: 1px solid rgba(120,180,140,0.3);
+    color: #d4e3d0;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    cursor: pointer;
+  }
+  .voice-test-btn:active { transform: scale(0.95); }
+  .voice-empty {
+    padding: 30px;
+    text-align: center;
+    color: #6a8a70;
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .voice-modal-close {
+    background: linear-gradient(135deg, #4a8a5a, #2d5a3a);
+    border: none;
+    color: #d4e3d0;
+    padding: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+
+  #holo-view {
+    width: 100%;
+    height: 100%;
+    background: #000;
+    position: relative;
+    display: none;
+  }
+  #holo-canvas { width: 100%; height: 100%; display: block; }
+  .holo-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    color: #4a6a55;
+    text-align: center;
+    pointer-events: none;
+    z-index: 1;
+  }
+  .holo-input {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px;
+    display: flex;
+    gap: 8px;
+    z-index: 5;
+  }
+  .holo-input input {
+    flex: 1;
+    background: rgba(20,30,25,0.8);
+    border: 1px solid rgba(120,180,140,0.2);
+    border-radius: 20px;
+    padding: 8px 14px;
+    color: #d4e3d0;
+    font-size: 12px;
+    outline: none;
+  }
+  .holo-input button {
+    background: rgba(74,138,90,0.9);
+    border: none;
+    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    color: #fff;
+  }
+
+  /* Loader / first-time intro */
+  .intro {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    transition: opacity 1s ease;
+  }
+  .intro.hidden { opacity: 0; pointer-events: none; }
+  .intro-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+    font-weight: 300;
+    font-size: 64px;
+    letter-spacing: 0.2em;
+    color: #d4e3d0;
+    margin-bottom: 8px;
+  }
+  .intro-sub {
+    font-family: 'Noto Serif JP', serif;
+    font-weight: 300;
+    font-size: 11px;
+    letter-spacing: 0.6em;
+    color: #6a8a70;
+    margin-bottom: 40px;
+  }
+  .intro-btn {
+    background: transparent;
+    border: 1px solid rgba(120,180,140,0.4);
+    color: #d4e3d0;
+    padding: 14px 36px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.4em;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<div class="intro" id="intro">
+  <div class="intro-title">GAIA</div>
+  <div class="intro-sub">脱 炭 素 ホ ロ グ ラ ム</div>
+  <button class="intro-btn" onclick="startApp()">AWAKEN</button>
+</div>
+
+<div class="mode-toggle">
+  <button class="active" id="btn-normal" onclick="setMode('normal')">対話</button>
+  <button id="btn-holo" onclick="setMode('holo')">投影</button>
+</div>
+
+<div id="normal-view">
+  <div class="header">
+    <div class="title-en">DECARBONIZATION INTELLIGENCE</div>
+    <div class="title-main">G A I A</div>
+    <div class="title-jp">大 地 の 知 性</div>
+  </div>
+
+  <div id="avatar-container">
+    <div class="status-orb">
+      <div class="orb-dot" id="status-dot"></div>
+      <span id="status-text">ONLINE · CO₂ MODE</span>
+    </div>
+
+    <div class="mic-toggle" id="mic-toggle" onclick="toggleMicMode()">
+      <div class="mic-icon"></div>
+      <span id="mic-label">MIC OFF</span>
+    </div>
+
+    <canvas id="single-canvas"></canvas>
+
+    <div class="barge-meter" id="barge-meter">
+      <div class="barge-meter-fill" id="barge-meter-fill"></div>
+    </div>
+
+    <button class="stop-btn" id="stop-btn" onclick="interruptSpeech()">
+      <span class="stop-icon"></span>
+      <span>STOP</span>
+    </button>
+
+    <div class="live-transcript" id="live-transcript"></div>
+  </div>
+
+  <div class="chat-area">
+    <div class="messages" id="messages">
+      <div class="msg agent">
+        <div class="msg-label">GAIA</div>
+        <div class="msg-text">こんにちは。私は脱炭素のための知性、GAIAです。
+GHG排出量の算定、再エネ導入、Scope 1〜3、SBTi、CBAM——なんでも問いかけてください。
+
+🎤 マイクをONにすると、自動で声を拾って会話できます。</div>
+      </div>
+    </div>
+    <div class="input-bar">
+      <button class="voice-toggle" id="voice-toggle" onclick="toggleVoice()">🔊 OFF</button>
+      <button class="voice-settings-btn" id="voice-settings-btn" onclick="openVoicePicker()" title="音声を選択">🎙</button>
+      <input type="text" id="user-input" placeholder="話しかける、または入力…" />
+      <button class="icon-btn" id="send-btn" onclick="sendMessage()">→</button>
+    </div>
+  </div>
+</div>
+
+<div id="holo-view">
+  <div class="holo-hint">◆ ピラミッドシートを画面中央に置く ◆</div>
+  <canvas id="holo-canvas"></canvas>
+  <div class="holo-input">
+    <input type="text" id="holo-user-input" placeholder="話しかける…" />
+    <button onclick="sendMessageHolo()">→</button>
+  </div>
+</div>
+
+<!-- DEBUG LOG -->
+<div class="debug-log" id="debug-log"></div>
+<button class="debug-toggle" onclick="toggleDebugLog()">DEBUG</button>
+
+<!-- VOICE PICKER MODAL -->
+<div class="voice-modal hidden" id="voice-modal">
+  <div class="voice-modal-inner">
+    <div class="voice-modal-title">音声を選ぶ</div>
+    <div class="voice-modal-sub">SELECT JAPANESE VOICE</div>
+    <div class="voice-modal-desc">
+      お使いのデバイスで利用可能な日本語音声の一覧です。再生ボタンで試聴し、自然に聞こえる音声を選択してください。「ローカル」と表示されているものは端末内蔵音声で、最も品質が安定しています。
+    </div>
+    <div class="voice-list" id="voice-list"></div>
+    <button class="voice-modal-close" onclick="closeVoicePicker()">閉じる</button>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.module.min.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ============ STATE ============
+const VOICE_STORAGE = 'gaia_voice_enabled_v1';
+const MIC_STORAGE = 'gaia_mic_enabled_v1';
+const MODEL = 'gemini-2.5-flash';
+
+let voiceEnabled = false;
+let micModeEnabled = false; // continuous listening mode
+
+let mode = 'normal';
+let conversation = [];
+let isThinking = false;
+let isSpeaking = false;
+let recogActive = false;
+
+function loadPrefs() {
+  try {
+    voiceEnabled = localStorage.getItem(VOICE_STORAGE) === '1';
+    micModeEnabled = localStorage.getItem(MIC_STORAGE) === '1';
+  } catch (e) {}
+  updateVoiceUI();
+  updateMicToggleUI();
+}
+
+function setStatus(label, cls) {
+  const dot = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  dot.className = 'orb-dot' + (cls ? ' ' + cls : '');
+  text.textContent = label;
+}
+
+// ============ 3D AGENT ============
+class Agent {
+  constructor() {
+    this.group = new THREE.Group();
+    this.energy = 0;
+    this.targetEnergy = 0;
+    this.wavePulse = 0;
+    this.build();
+  }
+
+  build() {
+    const coreGeo = new THREE.IcosahedronGeometry(0.6, 5);
+    const coreMat = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0 },
+        energy: { value: 0 },
+        wavePulse: { value: 0 }
+      },
+      vertexShader: `
+        uniform float time;
+        uniform float energy;
+        uniform float wavePulse;
+        varying vec3 vNormal;
+        varying vec3 vPos;
+        varying float vDisp;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vec3 p = position;
+          float wave = sin(p.y * 4.0 + time * 1.5) * 0.04;
+          float wave2 = cos(p.x * 3.0 + time * 0.8) * 0.03;
+          float wave3 = sin(p.z * 5.0 - time * 1.1) * 0.025;
+          float baseline = (wave + wave2 + wave3) * 0.6;
+          float speak = sin(p.y * 8.0 + time * 9.0) * 0.06
+                      + cos(p.x * 7.0 + time * 11.0) * 0.05
+                      + sin((p.x + p.y + p.z) * 12.0 + time * 14.0) * 0.04;
+          float r = length(p);
+          float pulseWave = sin(r * 8.0 - wavePulse * 6.0) * exp(-wavePulse * 1.2) * 0.15;
+          float disp = baseline + speak * energy + pulseWave * (wavePulse > 0.0 ? 1.0 : 0.0);
+          vDisp = disp;
+          p += normal * disp;
+          vPos = p;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        uniform float energy;
+        varying vec3 vNormal;
+        varying vec3 vPos;
+        varying float vDisp;
+        void main() {
+          vec3 viewDir = vec3(0.0, 0.0, 1.0);
+          float fresnel = pow(1.0 - abs(dot(vNormal, viewDir)), 2.5);
+          vec3 deepGreen = vec3(0.05, 0.25, 0.15);
+          vec3 leaf = vec3(0.25, 0.65, 0.38);
+          vec3 glow = vec3(0.55, 1.0, 0.70);
+          vec3 speakGlow = vec3(0.95, 0.85, 0.45);
+          float n = sin(vPos.x * 6.0 + time * 0.5)
+                  * cos(vPos.y * 6.0 - time * 0.4)
+                  * sin(vPos.z * 5.0 + time * 0.3);
+          n = n * 0.5 + 0.5;
+          vec3 col = mix(deepGreen, leaf, n);
+          col = mix(col, glow, fresnel * 0.85);
+          col = mix(col, speakGlow, energy * fresnel * 0.5);
+          col += vec3(0.3, 0.6, 0.4) * abs(vDisp) * 2.5;
+          col += glow * energy * 0.4;
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `
+    });
+    this.core = new THREE.Mesh(coreGeo, coreMat);
+    this.group.add(this.core);
+
+    const shellGeo = new THREE.IcosahedronGeometry(0.95, 2);
+    const shellMat = new THREE.MeshBasicMaterial({
+      color: 0x7aab8a, wireframe: true, transparent: true, opacity: 0.3
+    });
+    this.shell = new THREE.Mesh(shellGeo, shellMat);
+    this.group.add(this.shell);
+
+    const innerShellGeo = new THREE.IcosahedronGeometry(0.78, 1);
+    const innerShellMat = new THREE.MeshBasicMaterial({
+      color: 0xb8e0c4, wireframe: true, transparent: true, opacity: 0.15
+    });
+    this.innerShell = new THREE.Mesh(innerShellGeo, innerShellMat);
+    this.group.add(this.innerShell);
+
+    const rippleGeo = new THREE.IcosahedronGeometry(1.0, 2);
+    const rippleMat = new THREE.MeshBasicMaterial({
+      color: 0xd4b878, wireframe: true, transparent: true, opacity: 0
+    });
+    this.ripple = new THREE.Mesh(rippleGeo, rippleMat);
+    this.group.add(this.ripple);
+
+    this.particles = [];
+    const pGeo = new THREE.SphereGeometry(0.025, 8, 8);
+    for (let i = 0; i < 50; i++) {
+      const isAccent = i % 4 === 0;
+      const pMat = new THREE.MeshBasicMaterial({
+        color: isAccent ? 0xb8e0c4 : 0x5a8a6a,
+        transparent: true, opacity: 0.8
+      });
+      const p = new THREE.Mesh(pGeo, pMat);
+      p.userData = {
+        radius: 1.1 + Math.random() * 0.9,
+        speed: 0.3 + Math.random() * 0.7,
+        offset: Math.random() * Math.PI * 2,
+        tilt: Math.random() * Math.PI,
+        axisX: (Math.random() - 0.5) * 0.4,
+        axisY: (Math.random() - 0.5) * 0.3,
+        axisZ: (Math.random() - 0.5) * 0.4,
+      };
+      this.group.add(p);
+      this.particles.push(p);
+    }
+
+    this.rings = [];
+    for (let i = 0; i < 3; i++) {
+      const ringGeo = new THREE.TorusGeometry(1.3 + i * 0.18, 0.004, 8, 80);
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: 0x4a8a5a, transparent: true, opacity: 0.35
+      });
+      const ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.rotation.x = Math.PI / 2 + (Math.random() - 0.5) * 1.2;
+      ring.rotation.y = Math.random() * Math.PI;
+      ring.userData = { spinX: (Math.random() - 0.5) * 0.1, spinY: (Math.random() - 0.5) * 0.1 };
+      this.group.add(ring);
+      this.rings.push(ring);
+    }
+  }
+
+  pulse() {
+    this.targetEnergy = 1.0;
+    this.wavePulse = 0.001;
+  }
+
+  update(t, dt) {
+    this.energy += (this.targetEnergy - this.energy) * 0.06;
+    if (!isSpeaking) this.targetEnergy *= 0.96;
+    if (this.wavePulse > 0) {
+      this.wavePulse += dt * 1.5;
+      if (this.wavePulse > 4) this.wavePulse = 0;
+    }
+    this.core.material.uniforms.time.value = t;
+    this.core.material.uniforms.energy.value = this.energy;
+    this.core.material.uniforms.wavePulse.value = this.wavePulse;
+    this.core.rotation.y = t * 0.2;
+    this.core.rotation.x = Math.sin(t * 0.3) * 0.1;
+    this.shell.rotation.y = -t * 0.1;
+    this.shell.rotation.z = t * 0.05;
+    this.shell.material.opacity = 0.3 + this.energy * 0.4;
+    this.innerShell.rotation.x = t * 0.15;
+    this.innerShell.rotation.y = t * 0.08;
+    this.innerShell.material.opacity = 0.15 + this.energy * 0.3;
+    if (this.wavePulse > 0) {
+      this.ripple.scale.setScalar(1.0 + this.wavePulse * 0.5);
+      this.ripple.material.opacity = Math.max(0, 0.6 * Math.exp(-this.wavePulse * 0.8));
+    } else {
+      this.ripple.material.opacity = 0;
+    }
+    const pullFactor = 1.0 - this.energy * 0.2;
+    this.particles.forEach((p, i) => {
+      const d = p.userData;
+      const speedMul = 1.0 + this.energy * 1.5;
+      const a = t * d.speed * speedMul + d.offset;
+      const r = d.radius * pullFactor;
+      const x = Math.cos(a) * r;
+      const z = Math.sin(a) * r;
+      const y = Math.sin(a * 1.3 + d.tilt) * 0.35;
+      p.position.set(x + d.axisX, y + d.axisY, z + d.axisZ);
+      p.material.opacity = 0.5 + Math.sin(t * 2 + i) * 0.3 + this.energy * 0.3;
+      p.scale.setScalar(1.0 + this.energy * 0.5 + Math.sin(t * 4 + i) * 0.1);
+    });
+    const ringSpeed = 1.0 + this.energy * 2.0;
+    this.rings.forEach(r => {
+      r.rotation.x += r.userData.spinX * ringSpeed * dt;
+      r.rotation.y += r.userData.spinY * ringSpeed * dt;
+      r.material.opacity = 0.35 + this.energy * 0.4;
+    });
+    this.group.position.y = Math.sin(t * 0.5) * 0.05;
+  }
+}
+
+// ============ SCENE ============
+const scene = new THREE.Scene();
+const agent = new Agent();
+scene.add(agent.group);
+scene.add(new THREE.AmbientLight(0x223322, 0.5));
+const keyLight = new THREE.PointLight(0x88ccaa, 1.4, 10);
+keyLight.position.set(2, 2, 3);
+scene.add(keyLight);
+const fillLight = new THREE.PointLight(0xaa8855, 0.5, 10);
+fillLight.position.set(-2, -1, 2);
+scene.add(fillLight);
+
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+camera.position.set(0, 0, 4);
+
+const singleCanvas = document.getElementById('single-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas: singleCanvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const holoCanvas = document.getElementById('holo-canvas');
+const holoRenderer = new THREE.WebGLRenderer({ canvas: holoCanvas, antialias: true, alpha: false });
+holoRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+holoRenderer.setClearColor(0x000000, 1);
+holoRenderer.autoClear = false;
+
+const holoCams = [];
+for (let i = 0; i < 4; i++) {
+  const c = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
+  c.position.set(0, 0, 5);
+  holoCams.push(c);
+}
+
+function resizeAll() {
+  const c = document.getElementById('avatar-container');
+  if (c.clientWidth > 0) {
+    camera.aspect = c.clientWidth / c.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(c.clientWidth, c.clientHeight, false);
+  }
+  if (holoCanvas.clientWidth > 0) {
+    holoRenderer.setSize(holoCanvas.clientWidth, holoCanvas.clientHeight, false);
+  }
+}
+window.addEventListener('resize', resizeAll);
+
+const clock = new THREE.Clock();
+let lastT = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  const dt = t - lastT;
+  lastT = t;
+  agent.update(t, dt);
+
+  if (mode === 'normal') {
+    renderer.render(scene, camera);
+  } else {
+    holoRenderer.clear();
+    const w = holoCanvas.width;
+    const h = holoCanvas.height;
+    const size = Math.min(w, h) / 2;
+    const cx = w / 2;
+    const cy = h / 2;
+    const viewports = [
+      { x: cx - size/2, y: 0,           rotY: Math.PI },
+      { x: cx - size/2, y: h - size,    rotY: 0 },
+      { x: 0,           y: cy - size/2, rotY: -Math.PI/2 },
+      { x: w - size,    y: cy - size/2, rotY: Math.PI/2 }
+    ];
+    holoRenderer.setScissorTest(true);
+    viewports.forEach((v, i) => {
+      const cam = holoCams[i];
+      cam.position.set(Math.sin(v.rotY) * 4, 0, Math.cos(v.rotY) * 4);
+      cam.up.set(0, -1, 0);
+      cam.lookAt(0, 0, 0);
+      holoRenderer.setViewport(v.x, v.y, size, size);
+      holoRenderer.setScissor(v.x, v.y, size, size);
+      holoRenderer.render(scene, cam);
+    });
+    holoRenderer.setScissorTest(false);
+  }
+}
+
+window.setMode = function(m) {
+  mode = m;
+  document.getElementById('normal-view').style.display = m === 'normal' ? 'flex' : 'none';
+  document.getElementById('holo-view').style.display = m === 'holo' ? 'block' : 'none';
+  document.getElementById('btn-normal').classList.toggle('active', m === 'normal');
+  document.getElementById('btn-holo').classList.toggle('active', m === 'holo');
+  setTimeout(resizeAll, 50);
+};
+
+window.startApp = function() {
+  document.getElementById('intro').classList.add('hidden');
+  setTimeout(() => {
+    document.getElementById('intro').style.display = 'none';
+    resizeAll();
+  }, 1000);
+};
+
+// ============ SERVERLESS GEMINI CALL ============
+const SYSTEM_PROMPT = `あなたは「GAIA」、脱炭素・気候変動対策に特化したAIエージェントです。
+
+専門領域：
+- GHG排出量算定（Scope 1, 2, 3、GHGプロトコル、ISO 14064）
+- 再生可能エネルギー（太陽光・風力・地熱・バイオマス・水素）
+- 各種規制・枠組み（SBTi、TCFD、CDP、CBAM、GX-ETS、パリ協定、CSRD）
+- カーボンクレジット、J-クレジット、Voluntary Carbon Market
+- 省エネ施策、サーキュラーエコノミー、CCUS
+- LCA（ライフサイクルアセスメント）
+
+回答スタイル：
+- 簡潔、具体的、実用的に。冗長にしない。音声で読み上げられることを意識し、自然な話し言葉で。
+- 必要なら数値・係数・出典を示す
+- 専門用語には短い説明を添える
+- 不確実なことは正直に「不明」と言う
+- 落ち着いた、知的で温かみのある語り口
+- 日本語で答える。1〜3段落、最大250字程度
+- 箇条書きやマークダウン記法は使わない（音声で読み上げるため）`;
+
+async function callGemini(userText) {
+  conversation.push({ role: 'user', parts: [{ text: userText }] });
+  const res = await fetch('/api/gemini', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: MODEL,
+      system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      contents: conversation
+    })
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    let msg = `エラー (${res.status})`;
+    try {
+      const j = JSON.parse(errText);
+      if (j.error) msg += ': ' + (typeof j.error === 'string' ? j.error : j.error.message || JSON.stringify(j.error));
+    } catch(e) {}
+    conversation.pop();
+    throw new Error(msg);
+  }
+  const data = await res.json();
+  const reply = data?.candidates?.[0]?.content?.parts?.map(p => p.text).join('') || '';
+  if (!reply) { conversation.pop(); throw new Error('応答が空でした'); }
+  conversation.push({ role: 'model', parts: [{ text: reply }] });
+  return reply;
+}
+
+// ============ CHAT UI ============
+const messagesEl = document.getElementById('messages');
+const userInput = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+const holoUserInput = document.getElementById('holo-user-input');
+const liveTranscript = document.getElementById('live-transcript');
+
+function addMessage(role, text) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  const label = role === 'user' ? 'あなた' : 'GAIA';
+  div.innerHTML = `<div class="msg-label">${label}</div><div class="msg-text"></div>`;
+  div.querySelector('.msg-text').textContent = text;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+function showTyping() {
+  const div = document.createElement('div');
+  div.className = 'msg agent';
+  div.id = 'typing-indicator';
+  div.innerHTML = `<div class="msg-label">GAIA</div><div class="msg-text"><span class="typing"><span></span><span></span><span></span></span></div>`;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+function hideTyping() {
+  const t = document.getElementById('typing-indicator');
+  if (t) t.remove();
+}
+
+window.sendMessage = async function() {
+  const text = userInput.value.trim();
+  if (!text || isThinking) return;
+  isThinking = true;
+  sendBtn.disabled = true;
+  addMessage('user', text);
+  userInput.value = '';
+  showTyping();
+  setStatus('THINKING', 'thinking');
+  try {
+    const reply = await callGemini(text);
+    hideTyping();
+    addMessage('agent', reply);
+    speakReply(reply);
+  } catch (e) {
+    hideTyping();
+    addMessage('agent', '——通信が途切れました。\n' + e.message);
+    setStatus('ERROR', 'error');
+    setTimeout(() => setStatus('ONLINE · CO₂ MODE', ''), 3000);
+  }
+  isThinking = false;
+  sendBtn.disabled = false;
+};
+
+window.sendMessageHolo = async function() {
+  const text = holoUserInput.value.trim();
+  if (!text || isThinking) return;
+  isThinking = true;
+  holoUserInput.value = '';
+  addMessage('user', text);
+  try {
+    const reply = await callGemini(text);
+    addMessage('agent', reply);
+    speakReply(reply);
+  } catch (e) {
+    addMessage('agent', '——通信エラー: ' + e.message);
+  }
+  isThinking = false;
+};
+
+userInput.addEventListener('keydown', e => { if (e.key === 'Enter') window.sendMessage(); });
+holoUserInput.addEventListener('keydown', e => { if (e.key === 'Enter') window.sendMessageHolo(); });
+
+// ============ AUDIO LEVEL DETECTOR (for barge-in) ============
+let audioContext = null;
+let micStream = null;
+let analyser = null;
+let bargeRAF = null;
+let voiceLevelHistory = [];
+const BARGE_THRESHOLD = 0.18;        // mic level above this = considered speech
+const BARGE_SUSTAIN_FRAMES = 6;      // frames of sustained voice needed to trigger
+const ECHO_PROTECTION_DELAY = 600;   // ms after TTS starts, ignore mic (avoid feedback)
+
+let speakStartTime = 0;
+let bargeInArmed = false;
+
+async function ensureMicAccess() {
+  if (micStream) return micStream;
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true
+      }
+    });
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaStreamSource(micStream);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 1024;
+    analyser.smoothingTimeConstant = 0.5;
+    source.connect(analyser);
+    return micStream;
+  } catch (e) {
+    console.warn('Mic access failed:', e);
+    return null;
+  }
+}
+
+function startBargeDetection() {
+  if (!analyser) return;
+  bargeInArmed = false; // armed after echo protection delay
+  voiceLevelHistory = [];
+  const data = new Uint8Array(analyser.frequencyBinCount);
+
+  const meter = document.getElementById('barge-meter');
+  const meterFill = document.getElementById('barge-meter-fill');
+  if (meter) meter.classList.add('visible');
+
+  function tick() {
+    if (!isSpeaking) {
+      stopBargeDetection();
+      return;
+    }
+    analyser.getByteFrequencyData(data);
+    // Focus on voice frequencies (roughly 200-3000 Hz)
+    // FFT bin = sampleRate / fftSize; with 44100/1024 ≈ 43Hz/bin
+    // 200Hz ≈ bin 5, 3000Hz ≈ bin 70
+    let sum = 0;
+    let count = 0;
+    for (let i = 5; i < 70; i++) {
+      sum += data[i];
+      count++;
+    }
+    const avg = sum / count / 255;  // normalized 0..1
+
+    // Update meter visualization
+    if (meterFill) {
+      meterFill.style.width = Math.min(100, avg * 200) + '%';
+    }
+
+    // Check if armed (echo protection elapsed)
+    if (!bargeInArmed && performance.now() - speakStartTime > ECHO_PROTECTION_DELAY) {
+      bargeInArmed = true;
+    }
+
+    if (bargeInArmed) {
+      voiceLevelHistory.push(avg);
+      if (voiceLevelHistory.length > 15) voiceLevelHistory.shift();
+      // Count sustained frames above threshold
+      const aboveCount = voiceLevelHistory.filter(v => v > BARGE_THRESHOLD).length;
+      if (aboveCount >= BARGE_SUSTAIN_FRAMES) {
+        console.log('Barge-in detected via volume', avg);
+        interruptSpeech();
+        return;
+      }
+    }
+
+    bargeRAF = requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+function stopBargeDetection() {
+  if (bargeRAF) {
+    cancelAnimationFrame(bargeRAF);
+    bargeRAF = null;
+  }
+  const meter = document.getElementById('barge-meter');
+  if (meter) meter.classList.remove('visible');
+}
+
+// ============ INTERRUPT SPEECH ============
+window.interruptSpeech = function() {
+  if (!isSpeaking) return;
+  console.log('Interrupting speech...');
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  isSpeaking = false;
+  stopBargeDetection();
+  hideStopButton();
+  setStatus('ONLINE · CO₂ MODE', '');
+  // If mic mode is on, ensure recognition resumes promptly
+  if (micModeEnabled) {
+    setTimeout(() => {
+      if (micModeEnabled && !recogActive) startRecognition();
+    }, 200);
+  }
+};
+
+function showStopButton() {
+  const btn = document.getElementById('stop-btn');
+  if (btn) btn.classList.add('visible');
+}
+function hideStopButton() {
+  const btn = document.getElementById('stop-btn');
+  if (btn) btn.classList.remove('visible');
+}
+
+// ============ VOICE OUTPUT ============
+const VOICE_NAME_STORAGE = 'gaia_voice_name_v1';
+let jpVoice = null;
+let savedVoiceName = '';
+
+try { savedVoiceName = localStorage.getItem(VOICE_NAME_STORAGE) || ''; } catch(e) {}
+
+function getJapaneseVoices() {
+  if (!('speechSynthesis' in window)) return [];
+  return speechSynthesis.getVoices().filter(v => v.lang && v.lang.toLowerCase().startsWith('ja'));
+}
+
+function pickJapaneseVoice() {
+  const candidates = getJapaneseVoices();
+  if (candidates.length === 0) return null;
+  // Use saved selection if available
+  if (savedVoiceName) {
+    const saved = candidates.find(v => v.name === savedVoiceName);
+    if (saved) return saved;
+  }
+  // Otherwise prefer common natural voices: Google > Kyoko > Otoya > Haruka > first
+  const preferred = ['google 日本語', 'google ja', 'kyoko', 'o-ren', 'otoya', 'haruka', 'sayaka', 'nanami'];
+  for (const key of preferred) {
+    const found = candidates.find(v => v.name.toLowerCase().includes(key));
+    if (found) return found;
+  }
+  return candidates[0];
+}
+
+if ('speechSynthesis' in window) {
+  speechSynthesis.onvoiceschanged = () => {
+    jpVoice = pickJapaneseVoice();
+    refreshVoiceList();
+  };
+  jpVoice = pickJapaneseVoice();
+}
+
+// Build the voice picker list
+function refreshVoiceList() {
+  const listEl = document.getElementById('voice-list');
+  if (!listEl) return;
+  const voices = getJapaneseVoices();
+
+  if (voices.length === 0) {
+    listEl.innerHTML = `
+      <div class="voice-empty">
+        日本語音声が見つかりません。<br><br>
+        ・Windowsの場合: 設定 → 時刻と言語 → 音声 から「日本語」を追加<br>
+        ・Macの場合: システム設定 → アクセシビリティ → 読み上げコンテンツ から音声を追加<br>
+        ・Androidの場合: 設定 → ユーザー補助 → テキスト読み上げ で「Google音声合成エンジン」を有効化
+      </div>`;
+    return;
+  }
+
+  listEl.innerHTML = '';
+  voices.forEach((v) => {
+    const item = document.createElement('div');
+    item.className = 'voice-item' + (jpVoice && v.name === jpVoice.name ? ' selected' : '');
+    item.dataset.name = v.name;
+
+    const localBadge = v.localService ? '<span class="badge local">ローカル</span>' : '<span class="badge">クラウド</span>';
+    const defaultBadge = v.default ? '<span class="badge">既定</span>' : '';
+
+    item.innerHTML = `
+      <div class="voice-item-info">
+        <div class="voice-item-name">${escapeHtml(v.name)}</div>
+        <div class="voice-item-meta">${escapeHtml(v.lang)} ${localBadge} ${defaultBadge}</div>
+      </div>
+      <div class="voice-item-actions">
+        <button class="voice-test-btn" onclick="event.stopPropagation(); testVoice('${escapeAttr(v.name)}')">▶ 試聴</button>
+      </div>
+    `;
+    item.addEventListener('click', () => {
+      selectVoice(v.name);
+    });
+    listEl.appendChild(item);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function escapeAttr(s) {
+  return String(s).replace(/['"\\]/g, '\\$&');
+}
+
+window.testVoice = function(voiceName) {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const voices = getJapaneseVoices();
+  const v = voices.find(x => x.name === voiceName);
+  if (!v) return;
+  const utt = new SpeechSynthesisUtterance('こんにちは。私は脱炭素のための知性、ガイアです。');
+  utt.lang = 'ja-JP';
+  utt.voice = v;
+  utt.rate = 1.0;
+  utt.pitch = 1.0;
+  speechSynthesis.speak(utt);
+};
+
+function selectVoice(voiceName) {
+  const voices = getJapaneseVoices();
+  const v = voices.find(x => x.name === voiceName);
+  if (!v) return;
+  jpVoice = v;
+  savedVoiceName = voiceName;
+  try { localStorage.setItem(VOICE_NAME_STORAGE, voiceName); } catch(e) {}
+  refreshVoiceList();
+}
+
+window.openVoicePicker = function() {
+  // Trigger voice list load (some browsers populate lazily)
+  if ('speechSynthesis' in window) speechSynthesis.getVoices();
+  refreshVoiceList();
+  document.getElementById('voice-modal').classList.remove('hidden');
+};
+window.closeVoicePicker = function() {
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  document.getElementById('voice-modal').classList.add('hidden');
+};
+
+function speakReply(text) {
+  isSpeaking = true;
+  speakStartTime = performance.now();
+  setStatus('SPEAKING', 'speaking');
+  agent.pulse();
+  showStopButton();
+
+  const pulseInterval = setInterval(() => {
+    if (isSpeaking) agent.pulse();
+    else clearInterval(pulseInterval);
+  }, 800);
+
+  // Start barge-in detection (volume-based)
+  // This works alongside speech recognition — whichever fires first wins
+  if (micModeEnabled) {
+    ensureMicAccess().then(stream => {
+      if (stream && isSpeaking) startBargeDetection();
+    });
+  }
+
+  // Keep speech recognition running during TTS for word-based barge-in
+  // (if mic mode is on)
+  if (micModeEnabled && !recogActive) {
+    // briefly delay to avoid initial echo
+    setTimeout(() => {
+      if (isSpeaking && micModeEnabled && !recogActive) {
+        startRecognition();
+      }
+    }, ECHO_PROTECTION_DELAY);
+  }
+
+  const cleanup = () => {
+    isSpeaking = false;
+    clearInterval(pulseInterval);
+    stopBargeDetection();
+    hideStopButton();
+    setStatus('ONLINE · CO₂ MODE', '');
+    if (micModeEnabled && !recogActive) {
+      setTimeout(() => { if (micModeEnabled) startRecognition(); }, 300);
+    }
+  };
+
+  if (voiceEnabled && 'speechSynthesis' in window) {
+    speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.lang = 'ja-JP';
+    if (jpVoice) utt.voice = jpVoice;
+    utt.rate = 1.0;
+    utt.pitch = 1.0;
+    utt.onend = cleanup;
+    utt.onerror = cleanup;
+    speechSynthesis.speak(utt);
+  } else {
+    const duration = Math.max(1500, Math.min(15000, text.length * 130));
+    setTimeout(cleanup, duration);
+  }
+}
+
+window.toggleVoice = function() {
+  voiceEnabled = !voiceEnabled;
+  try { localStorage.setItem(VOICE_STORAGE, voiceEnabled ? '1' : '0'); } catch(e) {}
+  updateVoiceUI();
+  if (voiceEnabled && 'speechSynthesis' in window && !jpVoice) jpVoice = pickJapaneseVoice();
+};
+function updateVoiceUI() {
+  const btn = document.getElementById('voice-toggle');
+  if (!btn) return;
+  if (voiceEnabled) {
+    btn.classList.add('on');
+    btn.textContent = '🔊 ON';
+  } else {
+    btn.classList.remove('on');
+    btn.textContent = '🔊 OFF';
+  }
+}
+
+// ============ VOICE INPUT (continuous listening mode) ============
+let recognition = null;
+let silenceTimer = null;
+let interimText = '';
+let finalText = '';
+let recogRestartAttempts = 0;
+let recogShouldRun = false;     // intent flag: do we WANT recognition to be running?
+let lastRecogActivity = 0;      // last time we got a result event
+let recogWatchdog = null;
+
+// Detect Android — needs special handling
+const IS_ANDROID = /Android/i.test(navigator.userAgent);
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+               (navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+
+// Debug log overlay
+function debugLog(msg) {
+  console.log('[GAIA]', msg);
+  const log = document.getElementById('debug-log');
+  if (log && log.classList.contains('visible')) {
+    const time = new Date().toLocaleTimeString();
+    log.innerHTML += `<div>[${time}] ${msg}</div>`;
+    log.scrollTop = log.scrollHeight;
+  }
+}
+
+function initRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    debugLog('SpeechRecognition API not available');
+    return null;
+  }
+  const r = new SR();
+  r.lang = 'ja-JP';
+  // Android Chrome has issues with continuous=true; we manage continuity ourselves
+  r.continuous = !IS_ANDROID;
+  r.interimResults = true;
+  r.maxAlternatives = 1;
+
+  r.onresult = (ev) => {
+    lastRecogActivity = performance.now();
+    let interim = '';
+    let final = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const transcript = ev.results[i][0].transcript;
+      if (ev.results[i].isFinal) {
+        final += transcript;
+      } else {
+        interim += transcript;
+      }
+    }
+
+    const interimTrimmed = interim.trim();
+    if (isSpeaking && interimTrimmed.length >= 2 &&
+        performance.now() - speakStartTime > ECHO_PROTECTION_DELAY) {
+      debugLog('Barge-in via recognition: ' + interimTrimmed);
+      if ('speechSynthesis' in window) speechSynthesis.cancel();
+      isSpeaking = false;
+      stopBargeDetection();
+      hideStopButton();
+      setStatus('LISTENING', 'listening');
+    }
+
+    if (interim) {
+      interimText = interim;
+      liveTranscript.textContent = interim;
+      liveTranscript.classList.add('visible', 'interim');
+    }
+    if (final) {
+      finalText += final;
+      liveTranscript.textContent = finalText;
+      liveTranscript.classList.remove('interim');
+      liveTranscript.classList.add('visible');
+      clearTimeout(silenceTimer);
+      silenceTimer = setTimeout(() => {
+        commitTranscript();
+      }, 1200);
+    }
+  };
+
+  r.onerror = (ev) => {
+    debugLog('Recognition error: ' + ev.error);
+    if (ev.error === 'no-speech') {
+      // common; will auto-restart on onend
+    } else if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+      addMessage('agent', 'マイクの使用が許可されていません。ブラウザのアドレスバー横の鍵アイコンからマイク権限を確認してください。');
+      micModeEnabled = false;
+      recogShouldRun = false;
+      try { localStorage.setItem(MIC_STORAGE, '0'); } catch(e) {}
+      updateMicToggleUI();
+    } else if (ev.error === 'network') {
+      // Android: network error means Google's speech service is unreachable
+      // or the device's speech service isn't installed/enabled
+      addMessage('agent', '音声認識サービスに接続できません。\n\n対処法:\n1. ネット接続を確認\n2. 設定 → アプリ → Google → 有効化\n3. 設定 → 言語と入力 → 仮想キーボード → Google音声入力 が有効か確認');
+      micModeEnabled = false;
+      recogShouldRun = false;
+      try { localStorage.setItem(MIC_STORAGE, '0'); } catch(e) {}
+      updateMicToggleUI();
+    } else if (ev.error === 'aborted') {
+      // intentional
+    } else {
+      debugLog('Unknown recognition error: ' + ev.error);
+    }
+  };
+
+  r.onend = () => {
+    debugLog('Recognition ended (recogShouldRun=' + recogShouldRun + ')');
+    recogActive = false;
+    // Auto-restart aggressively if mic mode is still on
+    if (recogShouldRun && !isSpeaking && !isThinking) {
+      // Android needs longer delay between stop and start
+      const delay = IS_ANDROID ? 250 : 100;
+      setTimeout(() => {
+        if (recogShouldRun && !isSpeaking && !isThinking && !recogActive) {
+          startRecognition();
+        }
+      }, delay);
+    } else {
+      liveTranscript.classList.remove('visible');
+      if (!recogShouldRun) {
+        setStatus('ONLINE · CO₂ MODE', '');
+      }
+    }
+  };
+
+  r.onstart = () => {
+    debugLog('Recognition started');
+    recogActive = true;
+    lastRecogActivity = performance.now();
+    recogRestartAttempts = 0;
+    setStatus('LISTENING', 'listening');
+  };
+
+  return r;
+}
+
+// Watchdog: if recognition is supposedly active but no events for too long,
+// force a restart (Android tends to silently die)
+function startRecogWatchdog() {
+  if (recogWatchdog) clearInterval(recogWatchdog);
+  recogWatchdog = setInterval(() => {
+    if (!recogShouldRun) {
+      clearInterval(recogWatchdog);
+      recogWatchdog = null;
+      return;
+    }
+    // If we think it's active but haven't heard from it in 12 seconds, restart
+    if (recogActive && performance.now() - lastRecogActivity > 12000) {
+      debugLog('Watchdog: forcing restart due to inactivity');
+      try { recognition.abort(); } catch(e) {}
+      recogActive = false;
+      // onend will trigger restart
+    }
+    // If we want it to run but it isn't, force start
+    if (!recogActive && !isSpeaking && !isThinking) {
+      debugLog('Watchdog: recognition not active, restarting');
+      startRecognition();
+    }
+  }, 3000);
+}
+
+function commitTranscript() {
+  const text = finalText.trim();
+  finalText = '';
+  interimText = '';
+  liveTranscript.classList.remove('visible');
+  liveTranscript.textContent = '';
+  if (text) {
+    userInput.value = text;
+    if (mode === 'holo') {
+      holoUserInput.value = text;
+      window.sendMessageHolo();
+    } else {
+      window.sendMessage();
+    }
+  }
+}
+
+function startRecognition() {
+  if (!recognition) recognition = initRecognition();
+  if (!recognition) {
+    alert('このブラウザは音声認識に対応していません。Chrome/Edge推奨です。');
+    micModeEnabled = false;
+    recogShouldRun = false;
+    updateMicToggleUI();
+    return false;
+  }
+  if (recogActive) return true;
+  try {
+    recognition.start();
+    debugLog('start() called');
+    return true;
+  } catch (e) {
+    debugLog('start() exception: ' + e.message);
+    // 'already started' is benign
+    if (e.message && e.message.includes('already')) {
+      recogActive = true;
+      return true;
+    }
+    return false;
+  }
+}
+
+function stopRecognition() {
+  recogShouldRun = false;
+  if (recogWatchdog) {
+    clearInterval(recogWatchdog);
+    recogWatchdog = null;
+  }
+  if (recognition && recogActive) {
+    try { recognition.stop(); } catch(e) {}
+  }
+  clearTimeout(silenceTimer);
+  finalText = '';
+  interimText = '';
+  liveTranscript.classList.remove('visible');
+}
+
+window.toggleMicMode = function() {
+  micModeEnabled = !micModeEnabled;
+  recogShouldRun = micModeEnabled;
+  try { localStorage.setItem(MIC_STORAGE, micModeEnabled ? '1' : '0'); } catch(e) {}
+  updateMicToggleUI();
+  if (micModeEnabled) {
+    debugLog('Mic mode ON (' + (IS_ANDROID ? 'Android' : IS_IOS ? 'iOS' : 'Desktop') + ')');
+    if (IS_IOS) {
+      addMessage('agent', 'iOSのSafari/Chromeでは音声認識が正式サポートされていません。テキスト入力をご利用ください。');
+      micModeEnabled = false;
+      recogShouldRun = false;
+      try { localStorage.setItem(MIC_STORAGE, '0'); } catch(e) {}
+      updateMicToggleUI();
+      return;
+    }
+    ensureMicAccess();
+    startRecognition();
+    startRecogWatchdog();
+  } else {
+    debugLog('Mic mode OFF');
+    stopRecognition();
+    stopBargeDetection();
+    setStatus('ONLINE · CO₂ MODE', '');
+  }
+};
+
+function updateMicToggleUI() {
+  const t = document.getElementById('mic-toggle');
+  const lbl = document.getElementById('mic-label');
+  if (!t) return;
+  if (micModeEnabled) {
+    t.classList.add('on');
+    lbl.textContent = 'MIC ON';
+  } else {
+    t.classList.remove('on');
+    lbl.textContent = 'MIC OFF';
+  }
+}
+
+window.toggleDebugLog = function() {
+  const log = document.getElementById('debug-log');
+  log.classList.toggle('visible');
+  if (log.classList.contains('visible')) {
+    debugLog('Debug log opened');
+    debugLog('UA: ' + navigator.userAgent);
+    debugLog('Android: ' + IS_ANDROID + ', iOS: ' + IS_IOS);
+    debugLog('SR available: ' + !!(window.SpeechRecognition || window.webkitSpeechRecognition));
+    debugLog('mediaDevices: ' + !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+    debugLog('isSecureContext: ' + window.isSecureContext);
+  }
+};
+
+// ============ INIT ============
+loadPrefs();
+setTimeout(resizeAll, 50);
+animate();
+
+// If mic was on previously, ask for permission on AWAKEN tap
+const introBtn = document.querySelector('.intro-btn');
+if (introBtn) {
+  introBtn.addEventListener('click', () => {
+    if (micModeEnabled) {
+      setTimeout(() => startRecognition(), 1200);
+    }
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "gaia-hologram-agent",
+  "version": "1.0.0",
+  "description": "GAIA — Decarbonization hologram AI agent (Netlify deployment)",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  }
+}
